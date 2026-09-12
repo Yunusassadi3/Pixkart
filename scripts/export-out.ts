@@ -257,8 +257,17 @@ async function exportOut() {
   try {
     const { execSync } = await import("child_process");
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-    execSync(`powershell -NoProfile -Command "Compress-Archive -Path '${outDir}\\*' -DestinationPath '${zipPath}' -Force"`);
-    console.log(`   ✓ Generated handover archive: ${zipPath}`);
+    if (process.platform === "win32") {
+      execSync(`powershell -NoProfile -Command "Compress-Archive -Path '${outDir}\\*' -DestinationPath '${zipPath}' -Force"`);
+      console.log(`   ✓ Generated handover archive: ${zipPath}`);
+    } else {
+      try {
+        execSync(`zip -r "${zipPath}" .`, { cwd: outDir, stdio: "ignore" });
+        console.log(`   ✓ Generated handover archive: ${zipPath}`);
+      } catch {
+        // Zip utility not available on this Linux environment
+      }
+    }
   } catch (zipErr: any) {
     console.warn("   ⚠️ Could not generate out.zip archive:", zipErr?.message);
   }
@@ -270,4 +279,17 @@ async function exportOut() {
   console.log("================================================================================\n");
 }
 
-exportOut();
+exportOut()
+  .then(async () => {
+    // Gracefully terminate any open MySQL connection pools so Node exits immediately
+    try {
+      if (global._localMysqlPool) await global._localMysqlPool.end();
+      if (global._cloudMysqlPool) await global._cloudMysqlPool.end();
+    } catch {}
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error("❌ Export Error:", err);
+    process.exit(1);
+  });
+
