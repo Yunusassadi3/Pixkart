@@ -11,25 +11,6 @@ const nextConfig: NextConfig = {
       { protocol: "http", hostname: "**" },
     ],
   },
-  async redirects() {
-    return [
-      {
-        source: "/admin",
-        destination: "/Tanzar",
-        permanent: false,
-      },
-      {
-        source: "/Admin",
-        destination: "/Tanzar",
-        permanent: false,
-      },
-      {
-        source: "/tanzar",
-        destination: "/Tanzar",
-        permanent: false,
-      },
-    ];
-  },
 };
 
 export default nextConfig;
