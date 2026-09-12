@@ -1,0 +1,3 @@
+# PixKart Netlify Redirects Configuration
+# 1. Dynamic shop route fallback for static hosting
+/shop/* /shop 200

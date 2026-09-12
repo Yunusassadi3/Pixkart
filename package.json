@@ -1,0 +1,45 @@
+{
+  "name": "mob",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && npx tsx scripts/export-out.ts",
+    "export": "npx tsx scripts/export-out.ts",
+    "start": "next start",
+    "lint": "eslint",
+    "db:init": "npx tsx scripts/init-database.ts",
+    "db:seed": "npx tsx scripts/init-database.ts",
+    "db:products": "npx tsx scripts/check-products.ts",
+    "user:manage": "npx tsx scripts/manage-users.ts"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.19",
+    "@radix-ui/react-select": "^2.3.3",
+    "@radix-ui/react-slider": "^1.4.3",
+    "@radix-ui/react-tabs": "^1.1.17",
+    "@radix-ui/react-toast": "^1.2.19",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.42.2",
+    "gsap": "^3.15.0",
+    "lucide-react": "^1.25.0",
+    "mysql2": "^3.24.2",
+    "next": "16.2.10",
+    "nodemailer": "^9.0.5",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.13",
+    "typescript": "^5"
+  }
+}
