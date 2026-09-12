@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Configured for production deployment on Netlify, Vercel, and Node.js servers
+  output: "standalone",
   reactStrictMode: true,
   images: {
     unoptimized: true,
