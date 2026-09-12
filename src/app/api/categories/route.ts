@@ -32,33 +32,6 @@ export async function GET() {
     formattedCategories = result.data;
   }
 
-  // Merge pending category modifications from TiDB Cloud queue if local PC is offline
-  try {
-    const localHealth = await testLocalConnection();
-    if (!localHealth.connected) {
-      const [queueRows]: any = await cloudQuery(
-        "SELECT action, entity_id, payload FROM cloud_catalog_queue WHERE entity_type = 'category'"
-      );
-      if (queueRows && queueRows.length > 0) {
-        for (const qItem of queueRows) {
-          try {
-            const payload = typeof qItem.payload === "string" ? JSON.parse(qItem.payload) : qItem.payload;
-            if (qItem.action === "delete") {
-              formattedCategories = formattedCategories.filter((c) => c.id !== qItem.entity_id);
-            } else if (qItem.action === "upsert" && payload) {
-              const existingIdx = formattedCategories.findIndex((c) => c.id === payload.id);
-              if (existingIdx >= 0) {
-                formattedCategories[existingIdx] = { ...formattedCategories[existingIdx], ...payload };
-              } else {
-                formattedCategories.push(payload);
-              }
-            }
-          } catch {}
-        }
-      }
-    }
-  } catch {}
-
   return NextResponse.json({
     categories: formattedCategories,
     source: result.isConnected ? "mysql_database" : "offline_cache",
@@ -76,30 +49,28 @@ export async function POST(request: Request) {
 
     const localHealth = await testLocalConnection();
     let savedToLocalDb = false;
-    let savedToCloudDb = false;
     let savedToCloudQueue = false;
-
-    const upsertSql = `INSERT INTO categories (id, name, slug, icon, image, display_order)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         name = VALUES(name),
-         slug = VALUES(slug),
-         icon = VALUES(icon),
-         image = VALUES(image),
-         display_order = VALUES(display_order);`;
-
-    const catParams = [
-      cat.id,
-      cat.name,
-      cat.slug || cat.id,
-      cat.icon || null,
-      cat.image || null,
-      Number((cat as any).displayOrder ?? (cat as any).display_order) || 0,
-    ];
 
     if (localHealth.connected) {
       try {
-        await localQuery(upsertSql, catParams);
+        await localQuery(
+          `INSERT INTO categories (id, name, slug, icon, image, display_order)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             name = VALUES(name),
+             slug = VALUES(slug),
+             icon = VALUES(icon),
+             image = VALUES(image),
+             display_order = VALUES(display_order);`,
+          [
+            cat.id,
+            cat.name,
+            cat.slug || cat.id,
+            cat.icon || null,
+            cat.image || null,
+            Number((cat as any).displayOrder ?? (cat as any).display_order) || 0,
+          ]
+        );
         savedToLocalDb = true;
       } catch (dbErr: any) {
         console.warn(`[Categories API] Direct DB write failed, buffering to cloud queue: ${dbErr.message}`);
@@ -107,13 +78,6 @@ export async function POST(request: Request) {
     }
 
     if (!savedToLocalDb) {
-      try {
-        await cloudQuery(upsertSql, catParams);
-        savedToCloudDb = true;
-      } catch (cloudErr: any) {
-        console.warn(`[Categories API] TiDB Cloud direct table write notice: ${cloudErr?.message}`);
-      }
-
       try {
         const queueId = `cat_category_${cat.id}_${Date.now()}`;
         await cloudQuery(
@@ -130,15 +94,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      persisted: savedToLocalDb || savedToCloudDb || savedToCloudQueue,
+      persisted: savedToLocalDb,
       savedToLocalDb,
-      savedToCloudDb,
       savedToCloudQueue,
       categoryId: cat.id,
       message: savedToLocalDb
         ? "Category saved directly to MySQL master."
-        : savedToCloudDb || savedToCloudQueue
-        ? "Category saved to 24/7 TiDB Cloud buffer. Ready for PC Sync & Drain."
+        : savedToCloudQueue
+        ? "Category buffered in 24/7 Cloud Catalog Queue. Will sync on PC restart."
         : "Category saved in client storage.",
     });
   } catch (err: any) {
@@ -158,7 +121,6 @@ export async function DELETE(request: Request) {
 
     const localHealth = await testLocalConnection();
     let deletedFromLocalDb = false;
-    let deletedFromCloudDb = false;
     let savedToCloudQueue = false;
 
     if (localHealth.connected) {
@@ -168,18 +130,9 @@ export async function DELETE(request: Request) {
       } catch (dbErr: any) {
         console.warn(`[Categories API] Direct DB delete failed, buffering to cloud queue: ${dbErr.message}`);
       }
+    }
 
-      try {
-        await cloudQuery("DELETE FROM categories WHERE id = ?", [id]);
-        await cloudQuery("DELETE FROM cloud_catalog_queue WHERE entity_id = ?", [id]);
-        deletedFromCloudDb = true;
-      } catch {}
-    } else {
-      try {
-        await cloudQuery("DELETE FROM categories WHERE id = ?", [id]);
-        deletedFromCloudDb = true;
-      } catch {}
-
+    if (!deletedFromLocalDb) {
       try {
         const queueId = `cat_category_del_${id}_${Date.now()}`;
         await cloudQuery(
@@ -196,7 +149,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({
       success: true,
-      deleted: deletedFromLocalDb || deletedFromCloudDb,
+      deleted: deletedFromLocalDb,
       savedToLocalDb: deletedFromLocalDb,
       savedToCloudQueue,
       categoryId: id,

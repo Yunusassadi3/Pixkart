@@ -135,6 +135,7 @@ export default function AdminPage() {
     toggleProductPromoBanner,
     toggleProductFeatured,
     toggleProductDealOfDay,
+    syncLocalProductsToCloud,
   } = useApp();
 
   const [passcodeInput, setPasscodeInput] = useState("");
@@ -143,6 +144,8 @@ export default function AdminPage() {
   const [isCompressingImage, setIsCompressingImage] = useState(false);
   const [productSaveError, setProductSaveError] = useState<string | null>(null);
   const [productSaveSuccess, setProductSaveSuccess] = useState<string | null>(null);
+  const [isSyncingMobileLocal, setIsSyncingMobileLocal] = useState(false);
+  const [mobileSyncMsg, setMobileSyncMsg] = useState<string | null>(null);
 
   // Require passcode unlock every time the Admin page is opened
   useEffect(() => {
@@ -1657,13 +1660,7 @@ export default function AdminPage() {
                   : "border-transparent text-slate-300 hover:text-white"
               }`}
             >
-              <PackageCheck className="w-4 h-4" />
-              <span>Live Order Tracking ({ordersList.length})</span>
-              {Number(dbHealth?.tableCounts?.cloudOrdersPending || dbHealth?.tableCounts?.cloudQueuePending || 0) > 0 && (
-                <span className="text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                  ☁️ +{dbHealth?.tableCounts?.cloudOrdersPending || dbHealth?.tableCounts?.cloudQueuePending} in Cloud
-                </span>
-              )}
+              <PackageCheck className="w-4 h-4" /> Live Order Tracking ({ordersList.length})
             </button>
 
             <button
@@ -1674,13 +1671,7 @@ export default function AdminPage() {
                   : "border-transparent text-slate-300 hover:text-white"
               }`}
             >
-              <Box className="w-4 h-4" />
-              <span>Products Catalog ({productsList.length})</span>
-              {Number(dbHealth?.tableCounts?.cloudProductsPending || 0) > 0 && (
-                <span className="text-[10px] font-extrabold bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                  ☁️ +{dbHealth?.tableCounts?.cloudProductsPending} in Cloud
-                </span>
-              )}
+              <Box className="w-4 h-4" /> Products Catalog ({productsList.length})
             </button>
 
             <button
@@ -1691,13 +1682,7 @@ export default function AdminPage() {
                   : "border-transparent text-slate-300 hover:text-white"
               }`}
             >
-              <Layers className="w-4 h-4" />
-              <span>Categories ({categoriesList.length})</span>
-              {Number(dbHealth?.tableCounts?.cloudCategoriesPending || 0) > 0 && (
-                <span className="text-[10px] font-extrabold bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                  ☁️ +{dbHealth?.tableCounts?.cloudCategoriesPending} in Cloud
-                </span>
-              )}
+              <Layers className="w-4 h-4" /> Categories ({categoriesList.length})
             </button>
 
             <button
@@ -1708,13 +1693,7 @@ export default function AdminPage() {
                   : "border-transparent text-slate-300 hover:text-white"
               }`}
             >
-              <Tag className="w-4 h-4" />
-              <span>Brands ({brandsList.length})</span>
-              {Number(dbHealth?.tableCounts?.cloudBrandsPending || 0) > 0 && (
-                <span className="text-[10px] font-extrabold bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                  ☁️ +{dbHealth?.tableCounts?.cloudBrandsPending} in Cloud
-                </span>
-              )}
+              <Tag className="w-4 h-4" /> Brands ({brandsList.length})
             </button>
 
             <button
@@ -1725,13 +1704,7 @@ export default function AdminPage() {
                   : "border-transparent text-slate-300 hover:text-white"
               }`}
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Brands in Spotlight ({productsList.filter((p) => p.inSpotlight).length})</span>
-              {Number(dbHealth?.tableCounts?.cloudSpotlightPending || 0) > 0 && (
-                <span className="text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                  ☁️ +{dbHealth?.tableCounts?.cloudSpotlightPending} in Cloud
-                </span>
-              )}
+              <Sparkles className="w-4 h-4" /> Brands in Spotlight ({productsList.filter((p) => p.inSpotlight).length})
             </button>
 
             <button
@@ -1742,13 +1715,7 @@ export default function AdminPage() {
                   : "border-transparent text-slate-300 hover:text-white"
               }`}
             >
-              <Megaphone className="w-4 h-4" />
-              <span>Hero &amp; Promo Banners ({productsList.filter((p) => p.inHeroBanner || p.inPromoBanner).length})</span>
-              {Number(dbHealth?.tableCounts?.cloudBannersPending || 0) > 0 && (
-                <span className="text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                  ☁️ +{dbHealth?.tableCounts?.cloudBannersPending} in Cloud
-                </span>
-              )}
+              <Megaphone className="w-4 h-4" /> Hero & Promo Banners ({productsList.filter((p) => p.inHeroBanner || p.inPromoBanner).length})
             </button>
 
             <button
@@ -1759,13 +1726,7 @@ export default function AdminPage() {
                   : "border-transparent text-slate-300 hover:text-white"
               }`}
             >
-              <span>🔥</span>
-              <span>Featured Accessories ({productsList.filter((p) => p.isFeatured).length})</span>
-              {Number(dbHealth?.tableCounts?.cloudFeaturedPending || 0) > 0 && (
-                <span className="text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                  ☁️ +{dbHealth?.tableCounts?.cloudFeaturedPending} in Cloud
-                </span>
-              )}
+              <span>🔥</span> Featured Accessories ({productsList.filter((p) => p.isFeatured).length})
             </button>
 
             <button
@@ -1776,13 +1737,7 @@ export default function AdminPage() {
                   : "border-transparent text-slate-300 hover:text-white"
               }`}
             >
-              <span>⚡</span>
-              <span>Flash Deals ({productsList.filter((p) => p.isDealOfDay).length})</span>
-              {Number(dbHealth?.tableCounts?.cloudDealsPending || 0) > 0 && (
-                <span className="text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                  ☁️ +{dbHealth?.tableCounts?.cloudDealsPending} in Cloud
-                </span>
-              )}
+              <span>⚡</span> Flash Deals ({productsList.filter((p) => p.isDealOfDay).length})
             </button>
 
             <button
@@ -1793,8 +1748,7 @@ export default function AdminPage() {
                   : "border-transparent text-slate-300 hover:text-white"
               }`}
             >
-              <BarChart3 className="w-4 h-4" />
-              <span>Analytics &amp; Storage Cleanup</span>
+              <BarChart3 className="w-4 h-4" /> Analytics & Storage Cleanup
             </button>
           </div>
         </div>
@@ -1849,22 +1803,14 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2.5 w-full md:w-auto justify-between md:justify-end flex-wrap">
-            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs flex-wrap">
-              <Cloud className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs">
+              <Cloud className="w-3.5 h-3.5 text-sky-400" />
               <span className="text-slate-300">Cloud Buffers:</span>
               <span className="font-bold text-emerald-400">
-                {dbHealth?.tableCounts?.totalCloudQueuePending || (dbHealth?.tableCounts?.cloudQueuePending || 0) + (dbHealth?.tableCounts?.cloudUserQueuePending || 0)} Pending
+                {(dbHealth?.tableCounts?.cloudQueuePending || 0) + (dbHealth?.tableCounts?.cloudUserQueuePending || 0)} Pending
               </span>
-              <span className="text-[10px] text-slate-400 border-l border-slate-700 pl-2 hidden sm:inline flex items-center gap-1.5 flex-wrap">
-                <span>📦 {dbHealth?.tableCounts?.cloudOrdersPending || dbHealth?.tableCounts?.cloudQueuePending || 0} Orders</span>
-                <span>•</span>
-                <span>🛍️ {dbHealth?.tableCounts?.cloudProductsPending || 0} Products</span>
-                <span>•</span>
-                <span>🏷️ {dbHealth?.tableCounts?.cloudCategoriesPending || 0} Categories</span>
-                <span>•</span>
-                <span>🏢 {dbHealth?.tableCounts?.cloudBrandsPending || 0} Brands</span>
-                <span>•</span>
-                <span>👤 {dbHealth?.tableCounts?.cloudUsersPending || dbHealth?.tableCounts?.cloudUserQueuePending || 0} Users</span>
+              <span className="text-[10px] text-slate-400 border-l border-slate-700 pl-2 hidden sm:inline">
+                📦 {dbHealth?.tableCounts?.cloudQueuePending || 0} Orders | 👤 {dbHealth?.tableCounts?.cloudUserQueuePending || 0} Users
               </span>
             </div>
 
@@ -1943,28 +1889,6 @@ export default function AdminPage() {
            ------------------------------------------------------------- */}
         {activeTab === "orders" && (
           <div className="space-y-6">
-            {/* 24/7 TiDB Cloud Orders Buffer Indicator */}
-            {Number(dbHealth?.tableCounts?.cloudOrdersPending || dbHealth?.tableCounts?.cloudQueuePending || 0) > 0 && (
-              <div className="bg-gradient-to-r from-amber-900/40 via-orange-900/30 to-amber-950/40 border border-amber-500/30 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Cloud className="w-5 h-5 animate-pulse" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-white text-xs flex items-center gap-2">
-                      <span>{dbHealth?.tableCounts?.cloudOrdersPending || dbHealth?.tableCounts?.cloudQueuePending} Order(s) Buffered in 24/7 TiDB Cloud</span>
-                      <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-bold">
-                        Cloud Memory Active
-                      </span>
-                    </h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
-                      Customer orders placed while your PC was off are securely queued in TiDB Cloud. Click <strong>&quot;Sync &amp; Drain&quot;</strong> above to commit into local MySQL and clean cloud storage to 0 KB.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Storage Auto-Cleanup Banner */}
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl flex items-start justify-between gap-3 text-xs text-blue-900 shadow-xs flex-wrap">
               <div className="flex items-start gap-3">
@@ -2269,24 +2193,54 @@ export default function AdminPage() {
            ------------------------------------------------------------- */}
         {activeTab === "products" && (
           <div className="space-y-6">
-            {/* 24/7 TiDB Cloud Buffer Info Banner (Shown when products are waiting in cloud queue) */}
-            {Number(dbHealth?.tableCounts?.cloudProductsPending || 0) > 0 && (
-              <div className="bg-gradient-to-r from-sky-900/40 via-blue-900/30 to-indigo-900/40 border border-sky-500/30 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-100">
+            {/* Mobile / Local Browser Sync Helper Banner */}
+            {productsList.length > 0 && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Cloud className="w-5 h-5 animate-pulse" />
+                  <div className="w-9 h-9 rounded-xl bg-[#2874f0] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Cloud className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="font-extrabold text-white text-xs flex items-center gap-2">
-                      <span>{dbHealth?.tableCounts?.cloudProductsPending} Product(s) Buffered in 24/7 TiDB Cloud</span>
-                      <span className="text-[10px] bg-sky-400/20 text-sky-300 border border-sky-400/30 px-2 py-0.5 rounded-full font-bold">
-                        Cloud Memory Active
-                      </span>
+                    <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-2">
+                      <span>Products Loaded in Browser ({productsList.length})</span>
+                      {dbHealth?.tableCounts?.products !== undefined && (
+                        <span className="text-[10px] text-slate-500 font-normal">
+                          (Master DB has {dbHealth.tableCounts.products})
+                        </span>
+                      )}
                     </h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
-                      Products added or updated while your PC was off are securely stored in TiDB Cloud. Click <strong>&quot;Sync &amp; Drain&quot;</strong> above to commit into local MySQL and clean cloud memory to 0 KB.
+                    <p className="text-slate-500 text-[11px]">
+                      Added products from this mobile device or browser? Click sync to immediately save all products to Master MySQL &amp; TiDB Cloud.
                     </p>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {mobileSyncMsg && (
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-100/90 px-2.5 py-1 rounded-lg">
+                      {mobileSyncMsg}
+                    </span>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setIsSyncingMobileLocal(true);
+                      setMobileSyncMsg(null);
+                      try {
+                        const res = await syncLocalProductsToCloud();
+                        setMobileSyncMsg(`✓ Synced ${res.synced}/${res.total} to Database!`);
+                        setTimeout(() => setMobileSyncMsg(null), 6000);
+                      } catch {
+                        setMobileSyncMsg("❌ Sync failed. Please retry.");
+                      } finally {
+                        setIsSyncingMobileLocal(false);
+                      }
+                    }}
+                    disabled={isSyncingMobileLocal}
+                    className="w-full sm:w-auto bg-[#2874f0] hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingMobileLocal ? "animate-spin" : ""}`} />
+                    <span>{isSyncingMobileLocal ? "Syncing..." : "Sync All to Database & Cloud"}</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -2407,28 +2361,6 @@ export default function AdminPage() {
            ------------------------------------------------------------- */}
         {activeTab === "categories" && (
           <div className="space-y-6">
-            {/* 24/7 TiDB Cloud Categories Buffer Indicator */}
-            {Number(dbHealth?.tableCounts?.cloudCategoriesPending || 0) > 0 && (
-              <div className="bg-gradient-to-r from-sky-900/40 via-blue-900/30 to-indigo-900/40 border border-sky-500/30 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Cloud className="w-5 h-5 animate-pulse" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-white text-xs flex items-center gap-2">
-                      <span>{dbHealth?.tableCounts?.cloudCategoriesPending} Category Update(s) Buffered in 24/7 TiDB Cloud</span>
-                      <span className="text-[10px] bg-sky-400/20 text-sky-300 border border-sky-400/30 px-2 py-0.5 rounded-full font-bold">
-                        Cloud Memory Active
-                      </span>
-                    </h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
-                      Category changes made on Netlify or while PC was offline are saved in TiDB Cloud. Click <strong>&quot;Sync &amp; Drain&quot;</strong> above to commit into local MySQL.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Action Header */}
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
@@ -2560,28 +2492,6 @@ export default function AdminPage() {
            ------------------------------------------------------------- */}
         {activeTab === "brands" && (
           <div className="space-y-6">
-            {/* 24/7 TiDB Cloud Brands Buffer Indicator */}
-            {Number(dbHealth?.tableCounts?.cloudBrandsPending || 0) > 0 && (
-              <div className="bg-gradient-to-r from-sky-900/40 via-blue-900/30 to-indigo-900/40 border border-sky-500/30 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Cloud className="w-5 h-5 animate-pulse" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-white text-xs flex items-center gap-2">
-                      <span>{dbHealth?.tableCounts?.cloudBrandsPending} Brand Update(s) Buffered in 24/7 TiDB Cloud</span>
-                      <span className="text-[10px] bg-sky-400/20 text-sky-300 border border-sky-400/30 px-2 py-0.5 rounded-full font-bold">
-                        Cloud Memory Active
-                      </span>
-                    </h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
-                      Brand additions or updates made on Netlify are buffered in TiDB Cloud. Click <strong>&quot;Sync &amp; Drain&quot;</strong> above to commit into local MySQL.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Action Header */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
@@ -2774,28 +2684,6 @@ export default function AdminPage() {
            ------------------------------------------------------------- */}
         {activeTab === "spotlight" && (
           <div className="space-y-6">
-            {/* 24/7 TiDB Cloud Spotlight Buffer Indicator */}
-            {Number(dbHealth?.tableCounts?.cloudSpotlightPending || 0) > 0 && (
-              <div className="bg-gradient-to-r from-purple-900/40 via-indigo-900/30 to-purple-950/40 border border-purple-500/30 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-purple-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Cloud className="w-5 h-5 animate-pulse" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-white text-xs flex items-center gap-2">
-                      <span>{dbHealth?.tableCounts?.cloudSpotlightPending} Spotlight Item(s) Buffered in 24/7 TiDB Cloud</span>
-                      <span className="text-[10px] bg-purple-400/20 text-purple-300 border border-purple-400/30 px-2 py-0.5 rounded-full font-bold">
-                        Cloud Memory Active
-                      </span>
-                    </h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
-                      Spotlight promotions updated while your PC was off are saved in TiDB Cloud. Click <strong>&quot;Sync &amp; Drain&quot;</strong> above to commit into local MySQL.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Header */}
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
@@ -2910,28 +2798,6 @@ export default function AdminPage() {
            ------------------------------------------------------------- */}
         {activeTab === "banners" && (
           <div className="space-y-8">
-            {/* 24/7 TiDB Cloud Banners Buffer Indicator */}
-            {Number(dbHealth?.tableCounts?.cloudBannersPending || 0) > 0 && (
-              <div className="bg-gradient-to-r from-indigo-900/40 via-blue-900/30 to-indigo-950/40 border border-indigo-500/30 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Cloud className="w-5 h-5 animate-pulse" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-white text-xs flex items-center gap-2">
-                      <span>{dbHealth?.tableCounts?.cloudBannersPending} Banner Asset(s) Buffered in 24/7 TiDB Cloud</span>
-                      <span className="text-[10px] bg-indigo-400/20 text-indigo-300 border border-indigo-400/30 px-2 py-0.5 rounded-full font-bold">
-                        Cloud Memory Active
-                      </span>
-                    </h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
-                      Hero slides, promo ads, or banner flags configured while your PC was offline are securely stored in TiDB Cloud. Click <strong>&quot;Sync &amp; Drain&quot;</strong> above to commit into local MySQL.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* 1. TOP HERO BANNER SLIDER PRODUCTS */}
             <div className="space-y-4">
               <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -3109,28 +2975,6 @@ export default function AdminPage() {
            ------------------------------------------------------------- */}
         {activeTab === "featured" && (
           <div className="space-y-6">
-            {/* 24/7 TiDB Cloud Featured Products Buffer Indicator */}
-            {Number(dbHealth?.tableCounts?.cloudFeaturedPending || 0) > 0 && (
-              <div className="bg-gradient-to-r from-rose-900/40 via-red-900/30 to-rose-950/40 border border-rose-500/30 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Cloud className="w-5 h-5 animate-pulse" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-white text-xs flex items-center gap-2">
-                      <span>{dbHealth?.tableCounts?.cloudFeaturedPending} Featured Product Update(s) Buffered in 24/7 TiDB Cloud</span>
-                      <span className="text-[10px] bg-rose-400/20 text-rose-300 border border-rose-400/30 px-2 py-0.5 rounded-full font-bold">
-                        Cloud Memory Active
-                      </span>
-                    </h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
-                      Featured products configured while your PC was offline are securely stored in TiDB Cloud. Click <strong>&quot;Sync &amp; Drain&quot;</strong> above to commit into local MySQL.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
@@ -3244,28 +3088,6 @@ export default function AdminPage() {
            ------------------------------------------------------------- */}
         {activeTab === "deals" && (
           <div className="space-y-6">
-            {/* 24/7 TiDB Cloud Flash Deals Buffer Indicator */}
-            {Number(dbHealth?.tableCounts?.cloudDealsPending || 0) > 0 && (
-              <div className="bg-gradient-to-r from-amber-900/40 via-yellow-900/30 to-amber-950/40 border border-amber-500/30 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Cloud className="w-5 h-5 animate-pulse" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-white text-xs flex items-center gap-2">
-                      <span>{dbHealth?.tableCounts?.cloudDealsPending} Flash Deal Update(s) Buffered in 24/7 TiDB Cloud</span>
-                      <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-bold">
-                        Cloud Memory Active
-                      </span>
-                    </h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
-                      Flash deals configured while your PC was offline are securely stored in TiDB Cloud. Click <strong>&quot;Sync &amp; Drain&quot;</strong> above to commit into local MySQL.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">

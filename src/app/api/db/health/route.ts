@@ -13,18 +13,8 @@ export async function GET() {
     phoneModels: 0,
     orders: 0,
     cloudQueuePending: 0,
-    cloudOrdersPending: 0,
     cloudUserQueuePending: 0,
-    cloudUsersPending: 0,
     cloudCatalogQueuePending: 0,
-    cloudProductsPending: 0,
-    cloudCategoriesPending: 0,
-    cloudBrandsPending: 0,
-    cloudModelsPending: 0,
-    cloudSpotlightPending: 0,
-    cloudBannersPending: 0,
-    cloudFeaturedPending: 0,
-    cloudDealsPending: 0,
     totalCloudQueuePending: 0,
     users: 0,
     addresses: 0,
@@ -56,62 +46,15 @@ export async function GET() {
     try {
       const [orderQueueCount]: any = await cloudQuery("SELECT COUNT(*) as count FROM cloud_order_queue");
       const [userQueueCount]: any = await cloudQuery("SELECT COUNT(*) as count FROM cloud_user_queue");
-      const [catalogRows]: any = await cloudQuery("SELECT id, entity_type, payload FROM cloud_catalog_queue");
+      const [catalogQueueCount]: any = await cloudQuery("SELECT COUNT(*) as count FROM cloud_catalog_queue");
 
+      const catalogPending = catalogQueueCount?.[0]?.count || 0;
       const orderPending = orderQueueCount?.[0]?.count || 0;
       const userPending = userQueueCount?.[0]?.count || 0;
-      const catalogPending = catalogRows?.length || 0;
-
-      let productsPending = 0;
-      let categoriesPending = 0;
-      let brandsPending = 0;
-      let modelsPending = 0;
-      let spotlightPending = 0;
-      let bannersPending = 0;
-      let featuredPending = 0;
-      let dealsPending = 0;
-
-      if (Array.isArray(catalogRows)) {
-        for (const row of catalogRows) {
-          const type = row.entity_type;
-          let p: any = {};
-          try {
-            p = typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload || {};
-          } catch {}
-
-          if (type === "product") {
-            productsPending++;
-            if (p.inSpotlight) spotlightPending++;
-            if (p.inHeroBanner || p.inPromoBanner) bannersPending++;
-            if (p.isFeatured) featuredPending++;
-            if (p.isDealOfDay || p.badgeText?.toLowerCase().includes("bestseller")) dealsPending++;
-          } else if (type === "category") {
-            categoriesPending++;
-          } else if (type === "brand") {
-            brandsPending++;
-          } else if (type === "model") {
-            modelsPending++;
-          } else if (type === "spotlight") {
-            spotlightPending++;
-          } else if (type === "hero_slide" || type === "promo_ad") {
-            bannersPending++;
-          }
-        }
-      }
 
       tableCounts.cloudQueuePending = orderPending;
-      tableCounts.cloudOrdersPending = orderPending;
       tableCounts.cloudUserQueuePending = userPending;
-      tableCounts.cloudUsersPending = userPending;
       tableCounts.cloudCatalogQueuePending = catalogPending;
-      tableCounts.cloudProductsPending = productsPending;
-      tableCounts.cloudCategoriesPending = categoriesPending;
-      tableCounts.cloudBrandsPending = brandsPending;
-      tableCounts.cloudModelsPending = modelsPending;
-      tableCounts.cloudSpotlightPending = spotlightPending;
-      tableCounts.cloudBannersPending = bannersPending;
-      tableCounts.cloudFeaturedPending = featuredPending;
-      tableCounts.cloudDealsPending = dealsPending;
       tableCounts.totalCloudQueuePending = orderPending + userPending + catalogPending;
     } catch {}
   }

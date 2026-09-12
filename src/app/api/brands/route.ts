@@ -29,33 +29,6 @@ export async function GET() {
     formattedBrands = result.data;
   }
 
-  // Merge pending brand modifications from TiDB Cloud queue if local PC is offline
-  try {
-    const localHealth = await testLocalConnection();
-    if (!localHealth.connected) {
-      const [queueRows]: any = await cloudQuery(
-        "SELECT action, entity_id, payload FROM cloud_catalog_queue WHERE entity_type = 'brand'"
-      );
-      if (queueRows && queueRows.length > 0) {
-        for (const qItem of queueRows) {
-          try {
-            const payload = typeof qItem.payload === "string" ? JSON.parse(qItem.payload) : qItem.payload;
-            if (qItem.action === "delete") {
-              formattedBrands = formattedBrands.filter((b) => b.id !== qItem.entity_id);
-            } else if (qItem.action === "upsert" && payload) {
-              const existingIdx = formattedBrands.findIndex((b) => b.id === payload.id);
-              if (existingIdx >= 0) {
-                formattedBrands[existingIdx] = { ...formattedBrands[existingIdx], ...payload };
-              } else {
-                formattedBrands.push(payload);
-              }
-            }
-          } catch {}
-        }
-      }
-    }
-  } catch {}
-
   return NextResponse.json({
     brands: formattedBrands,
     source: result.isConnected ? "mysql_database" : "offline_cache",
@@ -73,26 +46,24 @@ export async function POST(request: Request) {
 
     const localHealth = await testLocalConnection();
     let savedToLocalDb = false;
-    let savedToCloudDb = false;
     let savedToCloudQueue = false;
-
-    const upsertSql = `INSERT INTO brands (id, name, logo, series_list)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         name = VALUES(name),
-         logo = VALUES(logo),
-         series_list = VALUES(series_list);`;
-
-    const brandParams = [
-      brand.id,
-      brand.name,
-      brand.logo || null,
-      JSON.stringify((brand as any).series || (brand as any).series_list || []),
-    ];
 
     if (localHealth.connected) {
       try {
-        await localQuery(upsertSql, brandParams);
+        await localQuery(
+          `INSERT INTO brands (id, name, logo, series_list)
+           VALUES (?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             name = VALUES(name),
+             logo = VALUES(logo),
+             series_list = VALUES(series_list);`,
+          [
+            brand.id,
+            brand.name,
+            brand.logo || null,
+            JSON.stringify((brand as any).series || (brand as any).series_list || []),
+          ]
+        );
         savedToLocalDb = true;
       } catch (dbErr: any) {
         console.warn(`[Brands API] Direct DB write failed, buffering to cloud queue: ${dbErr.message}`);
@@ -100,13 +71,6 @@ export async function POST(request: Request) {
     }
 
     if (!savedToLocalDb) {
-      try {
-        await cloudQuery(upsertSql, brandParams);
-        savedToCloudDb = true;
-      } catch (cloudErr: any) {
-        console.warn(`[Brands API] TiDB Cloud direct table write notice: ${cloudErr?.message}`);
-      }
-
       try {
         const queueId = `cat_brand_${brand.id}_${Date.now()}`;
         await cloudQuery(
@@ -123,15 +87,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      persisted: savedToLocalDb || savedToCloudDb || savedToCloudQueue,
+      persisted: savedToLocalDb,
       savedToLocalDb,
-      savedToCloudDb,
       savedToCloudQueue,
       brandId: brand.id,
       message: savedToLocalDb
         ? "Brand saved directly to MySQL master."
-        : savedToCloudDb || savedToCloudQueue
-        ? "Brand saved to 24/7 TiDB Cloud buffer. Ready for PC Sync & Drain."
+        : savedToCloudQueue
+        ? "Brand buffered in 24/7 Cloud Catalog Queue. Will sync on PC restart."
         : "Brand saved in client storage.",
     });
   } catch (err: any) {
@@ -151,7 +114,6 @@ export async function DELETE(request: Request) {
 
     const localHealth = await testLocalConnection();
     let deletedFromLocalDb = false;
-    let deletedFromCloudDb = false;
     let savedToCloudQueue = false;
 
     if (localHealth.connected) {
@@ -161,18 +123,9 @@ export async function DELETE(request: Request) {
       } catch (dbErr: any) {
         console.warn(`[Brands API] Direct DB delete failed, buffering to cloud queue: ${dbErr.message}`);
       }
+    }
 
-      try {
-        await cloudQuery("DELETE FROM brands WHERE id = ?", [id]);
-        await cloudQuery("DELETE FROM cloud_catalog_queue WHERE entity_id = ?", [id]);
-        deletedFromCloudDb = true;
-      } catch {}
-    } else {
-      try {
-        await cloudQuery("DELETE FROM brands WHERE id = ?", [id]);
-        deletedFromCloudDb = true;
-      } catch {}
-
+    if (!deletedFromLocalDb) {
       try {
         const queueId = `cat_brand_del_${id}_${Date.now()}`;
         await cloudQuery(
@@ -189,7 +142,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({
       success: true,
-      deleted: deletedFromLocalDb || deletedFromCloudDb,
+      deleted: deletedFromLocalDb,
       savedToLocalDb: deletedFromLocalDb,
       savedToCloudQueue,
       brandId: id,

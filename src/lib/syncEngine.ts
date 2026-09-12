@@ -1121,9 +1121,6 @@ export async function syncAllAndDrainCloud(): Promise<UnifiedSyncResult> {
     const [localProdCheck]: any = await localQuery("SELECT count(*) as cnt FROM products");
     if (localProdCheck?.[0]?.cnt > 0) {
       await cloudQuery("DELETE FROM products WHERE 1=1").catch(() => {});
-      await cloudQuery("DELETE FROM categories WHERE 1=1").catch(() => {});
-      await cloudQuery("DELETE FROM brands WHERE 1=1").catch(() => {});
-      await cloudQuery("DELETE FROM phone_models WHERE 1=1").catch(() => {});
     }
   } catch {}
 
