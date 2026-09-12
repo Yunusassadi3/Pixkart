@@ -264,6 +264,34 @@ export async function POST(request: Request) {
     // 2. Buffer in Cloud Catalog Queue if Local MySQL is Offline (PC is OFF)
     if (!savedToLocalDb) {
       try {
+        if (entityType === "model") {
+          if (action === "upsert") {
+            const m = payload;
+            await cloudQuery(
+              `INSERT INTO phone_models (id, brand_id, name, series, screen_size, image)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON DUPLICATE KEY UPDATE
+                 brand_id = VALUES(brand_id),
+                 name = VALUES(name),
+                 series = VALUES(series),
+                 screen_size = VALUES(screen_size),
+                 image = VALUES(image);`,
+              [
+                m.id || entityId,
+                m.brandId || m.brand_id || null,
+                m.name || "Model",
+                m.series || null,
+                m.displaySize || m.screen_size || null,
+                m.image || null,
+              ]
+            ).catch(() => {});
+          } else if (action === "delete") {
+            await cloudQuery("DELETE FROM phone_models WHERE id = ?", [entityId]).catch(() => {});
+          }
+        }
+      } catch {}
+
+      try {
         await cloudQuery(
           `INSERT INTO cloud_catalog_queue (id, entity_type, action, entity_id, payload)
            VALUES (?, ?, ?, ?, ?)
